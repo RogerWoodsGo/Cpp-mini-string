@@ -192,7 +192,7 @@ class my_basic_string
 
         size_t max_size() const
         {
-            return (size_t)-1 / TAB_SIZE(T);
+            return (size_t)-1 / sizeof(T);
         }
 
         void clear()

@@ -166,7 +166,7 @@ class my_basic_string
 
             else if (n > m_length)
             {
-                std::fill(&(*this)[m_length], &(*this)[n - m_length], c);
+                std::memset(this->buffer() + m_length, c, n - m_length);
             }
 
             m_length = n;

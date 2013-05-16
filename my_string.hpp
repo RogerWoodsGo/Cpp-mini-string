@@ -163,18 +163,16 @@ class my_basic_string
         {
             this->reserve(n);
 
-            if (n < m_length)
+            if (n == m_length) return;
+            else if (n < m_length)
             {
                 (*this)[n] = string_type::null_char();
             }
 
-            else if (n > m_length)
-            {
-                std::memset(&(*this)[m_length], c, n - m_length);
-                (*this)[n] = string_type::null_char();
-            }
-
+            const size_t temp = m_length;
             m_length = n;
+            std::memset(&(*this)[temp], c, n - temp);
+            (*this)[n] = string_type::null_char();
         }
 
         const T * c_str() const

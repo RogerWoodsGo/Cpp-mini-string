@@ -1,223 +1,180 @@
 #ifndef MY_STRING_H_INCLUDED
 #define MY_STRING_H_INCLUDED
 
+#include <algorithm>
 #include <cstring>
-#include <iostream>
+#include <istream>
+#include <ostream>
 
-static const size_t TAB_SIZE = 32;
+const size_t TAB_SIZE = 32;
+
+template <typename string_type>
+struct String_Type {};
+
+template <> struct String_Type<char>
+{
+    static size_t length(const char * str) { return std::strlen(str); }
+    static char * cpy(char * s1, const char * s2) { return std::strcpy(s1, s2); }
+    static char * cat(char * s1, const char * s2) { return std::strcat(s1, s2); }
+    static int cmp(const char * s1, const char * s2) { return std::strcmp(s1, s2); }
+    static char null_char() { return '\0'; }
+    static const char * null_str() { return ""; }
+};
+
+template <> struct String_Type<wchar_t>
+{
+    static size_t length(const wchar_t * str) { return std::wcslen(str); }
+    static wchar_t * cpy(wchar_t * s1, const wchar_t * s2) { return std::wcscpy(s1, s2); }
+    static wchar_t * cat(wchar_t * s1, const wchar_t * s2) { return std::wcscat(s1, s2); }
+    static int cmp(const wchar_t * s1, const wchar_t * s2) { return std::wcscmp(s1, s2); }
+    static wchar_t null_char() { return L'\0'; }
+    static const wchar_t * null_str() { return L""; }
+
+};
 
 template <typename T>
-class Base_string
+class my_basic_string
 {
+    #define TAB_SIZE(T) (TAB_SIZE / sizeof(T))
+    typedef String_Type<T> string_type;
+
     private:
-        union Buff_u
+        union m_buff
         {
-                struct Ptr_s { T * m_ptr; size_t m_capacity; } ptr_s;
-                T m_tab[TAB_SIZE];
-        } buff_u;
+                struct m_pointer { T * m_ptr; size_t m_capacity; } m_pointer;
+                T m_tab[TAB_SIZE(T)];
+        } m_buff;
         size_t m_length;
 
-        void Set_Buffer(const T * str)
+        void free_memory()
         {
-            m_length = Length(str);
-            buff_u.ptr_s.m_capacity = 0;
-            buff_u.ptr_s.m_ptr = NULL;
-
-            if (m_length >= TAB_SIZE)
+            if (m_length < TAB_SIZE(T))
             {
-                buff_u.ptr_s.m_capacity = m_length;
-                buff_u.ptr_s.m_ptr = new T[m_length + 1];
-                Copy(buff_u.ptr_s.m_ptr, str);
-                buff_u.ptr_s.m_ptr[m_length] = 0;
-            }
-
-            else
-            {
-                if (buff_u.ptr_s.m_ptr != NULL)
-                {
-                    delete [] buff_u.ptr_s.m_ptr;
-                    buff_u.ptr_s.m_ptr = NULL;
-                }
-
-                Copy(buff_u.m_tab, str);
+                delete [] m_buff.m_pointer.m_ptr;
+                m_buff.m_pointer.m_ptr = NULL;
+                m_buff.m_pointer.m_capacity = 0;
             }
         }
 
-        size_t Length(const char * str) const { return std::strlen(str); }
-        size_t Length(const wchar_t * str) const { return std::wcslen(str); }
-
-        char * Copy(char * s1, const char * s2) { return std::strcpy(s1, s2); }
-        wchar_t * Copy(wchar_t * s1, const wchar_t * s2) { return std::wcscpy(s1, s2); }
-
-        char * Cat(char * s1, const char * s2) { return std::strcat(s1, s2); }
-        wchar_t * Cat(wchar_t * s1, const wchar_t * s2) { return std::wcscat(s1, s2); }
-
-        int Comp(const char * s1, const char * s2) const { return std::strcmp(s1, s2); }
-        int Comp(const wchar_t * s1, const wchar_t * s2) const { return std::wcscmp(s1, s2); }
+        T * buffer()
+        {
+            return m_length >= TAB_SIZE(T) ? m_buff.m_pointer.m_ptr : m_buff.m_tab;
+        }
 
     public:
-        Base_string()
+        my_basic_string()
         {
+            m_buff.m_tab[0] = string_type::null_str();
             m_length = 0;
-            buff_u.ptr_s.m_ptr = NULL;
-            buff_u.ptr_s.m_capacity = 0;
-            std::memset(buff_u.m_tab, 0, TAB_SIZE);
         }
 
-        Base_string(const T c)
+        my_basic_string(const T & c)
         {
             m_length = 1;
-            buff_u.m_tab[0] = c;
-            std::memset(buff_u.m_tab + 1, 0, TAB_SIZE - 1);
+            m_buff.m_tab[0] = c;
+            m_buff.m_tab[1] = string_type::null_char();
         }
 
-        Base_string(const T * str)
+        my_basic_string(const T * str)
         {
-            Set_Buffer(str);
-        }
+            m_length = string_type::length(str);
 
-        Base_string(const Base_string & s)
-        {
-            if (s.m_length >= TAB_SIZE)
+            if (m_length >= TAB_SIZE(T))
             {
-                Set_Buffer(s.buff_u.ptr_s.m_ptr);
+                m_buff.m_pointer.m_ptr = new T[m_length + 1];
+                string_type::cpy(m_buff.m_pointer.m_ptr, str);
+                m_buff.m_pointer.m_capacity = m_length;
             }
 
             else
             {
-                Set_Buffer(s.buff_u.m_tab);
+                string_type::cpy(m_buff.m_tab, str);
             }
+
         }
 
-        ~Base_string()
+        my_basic_string(const my_basic_string & s)
         {
-            if (buff_u.ptr_s.m_ptr != NULL)
+            if (s.m_length >= TAB_SIZE(T))
             {
-                delete [] buff_u.ptr_s.m_ptr;
-                buff_u.ptr_s.m_ptr = NULL;
+                string_type::cpy(m_buff.m_pointer.m_ptr, s.m_buff.m_pointer.m_ptr);
+                m_buff.m_pointer.m_capacity = s.m_buff.m_pointer.m_capacity;
             }
-        }
-
-        Base_string & operator=(const T * str)
-        {
-            Base_string<T> temp(str);
-            swap(*this, temp);
-            return *this;
-        }
-
-        Base_string & operator=(Base_string s)
-        {
-            swap(*this, s);
-            return *this;
-        }
-
-        Base_string & operator+=(const T * str)
-        {
-            m_length += Length(str);
-            T * temp = new T[m_length + 1];
-
-            if (m_length >= TAB_SIZE)
-                Copy(temp, buff_u.ptr_s.m_ptr);
-            else
-                Copy(temp, buff_u.m_tab);
-
-            Cat(temp, str);
-            temp[m_length] = 0;
-            Set_Buffer(temp);
-            delete [] temp, temp = NULL;
-
-            return *this;
-        }
-
-        Base_string & operator+=(const Base_string & s)
-        {
-            const T * temp;
-            if (s.m_length >= TAB_SIZE)
-                temp = s.buff_u.ptr_s.m_ptr;
-            else
-                temp = s.buff_u.m_tab;
-            return operator+=(temp);
-        }
-
-        const T operator[](const size_t n) const
-        {
-            if (n == m_length)
-                return 0;
             else
             {
-                if (m_length >= TAB_SIZE)
-                    return buff_u.ptr_s.m_ptr[n];
-                else
-                    return buff_u.m_tab[n];
+                string_type::cpy(m_buff.m_tab, s.m_buff.m_tab);
             }
+
+            m_length = s.m_length;
         }
 
-        friend void swap(Base_string & s1, Base_string & s2)
+        ~my_basic_string()
         {
-            if (s1.m_length >= TAB_SIZE)
+            this->free_memory();
+        }
+
+        friend void swap(my_basic_string & s1, my_basic_string & s2)
+        {
+            if (s1.m_length >= TAB_SIZE(T))
             {
-                std::swap(s1.buff_u.ptr_s.m_ptr, s2.buff_u.ptr_s.m_ptr);
-                std::swap(s1.buff_u.ptr_s.m_capacity, s2.buff_u.ptr_s.m_capacity);
+                std::swap(s1.m_buff.m_pointer.m_ptr, s2.m_buff.m_pointer.m_ptr);
+                std::swap(s1.m_buff.m_pointer.m_capacity, s2.m_buff.m_pointer.m_capacity);
             }
             else
-                std::swap(s1.buff_u.m_tab, s2.buff_u.m_tab);
+                std::swap(s1.m_buff.m_tab, s2.m_buff.m_tab);
+
             std::swap(s1.m_length, s2.m_length);
         }
 
-        friend std::ostream & operator<<(std::ostream & out, const Base_string & s)
+        const T & operator[](size_t n) const
         {
-            if (s.m_length >= TAB_SIZE)
-                out << s.buff_u.ptr_s.m_ptr;
-            else
-                out << s.buff_u.m_tab;
-            return out;
+            return (this->c_str() + n)[0];
         }
 
-        friend std::wostream & operator<<(std::wostream & out, const Base_string & s)
+        T & operator[](size_t n)
         {
-            if (s.m_length >= TAB_SIZE)
-                out << s.buff_u.ptr_s.m_ptr;
-            else
-                out << s.buff_u.m_tab;
-            return out;
+            return (this->buffer() + n)[0];
         }
 
-        friend std::istream & operator>>(std::istream & in, Base_string & s)
+        void reserve (const size_t & n = 0)
         {
-            T c;
-            s = "";
-
-            do
+            if (n < m_length) return;
+            if (m_length >= TAB_SIZE(T))
             {
-                in.get(c);
-                s += c;
-            } while (in.fail() == false && c != '\n');
+                if (n < m_buff.m_pointer.m_capacity)
+                    return;
+            }
 
-            Cat(s, "");
-            return in;
+            T * temp = new T[n + 1];
+            string_type::cpy(temp, this->c_str());
+            this->free_memory();
+            m_buff.m_pointer.m_ptr = new T[n];
+            string_type::cpy(m_buff.m_pointer.m_ptr, temp);
+            m_buff.m_pointer.m_capacity = n;
+
+            delete [] temp, temp = NULL;
         }
 
-        friend std::wistream & operator>>(std::wistream & in, Base_string & s)
+        void resize (size_t n, T c = string_type::null_char())
         {
-            T c;
-            s = "";
+            this->reserve(n);
 
-            do
+            if (n < m_length)
             {
-                in.get(c);
-                s += c;
-            } while (in.fail() == false && c != '\n');
+                (*this)[n] = string_type::null_char();
+            }
 
-            Cat(s, "");
-            return in;
+            else if (n > m_length)
+            {
+                std::fill(&(*this)[m_length], &(*this)[n - m_length], c);
+            }
+
+            m_length = n;
         }
 
         const T * c_str() const
         {
-            if (m_length >= TAB_SIZE)
-                return buff_u.ptr_s.m_ptr;
-            else
-                return buff_u.m_tab;
+            return const_cast<my_basic_string*>(this)->buffer();
         }
 
         size_t length() const
@@ -225,52 +182,36 @@ class Base_string
             return m_length;
         }
 
-        void clear()
+        size_t capacity() const
         {
-            Base_string<T> temp;
-            swap(*this, temp);
+            if (m_length >= TAB_SIZE(T))
+                return m_buff.m_pointer.m_capacity;
+            else
+                return TAB_SIZE(T);
         }
 
-        int compare(const Base_string & s) const
+        size_t max_size() const
         {
-            return Comp(this->c_str(), s.c_str());
+            return (size_t)-1 / TAB_SIZE(T);
+        }
+
+        void clear()
+        {
+            this->resize(0);
+        }
+
+        void print() const
+        {
+            std::cout << this->c_str() << std::endl;
+        }
+
+        bool empty() const
+        {
+            return m_length == 0;
         }
 };
 
-template <typename T>
-inline Base_string<T> operator+(Base_string<T> s, const T * str)
-{
-    s += str;
-    return s;
-}
-
-template <typename T>
-inline Base_string<T> operator+(Base_string<T> left, const Base_string<T> & right)
-{
-    T * temp;
-    if (right.m_length >= TAB_SIZE)
-        temp = right.buff_u.ptr_s.m_ptr;
-    else
-        temp = right.buff_u.m_tab;
-
-    return operator+(left, temp);
-}
-
-template <typename T>
-inline bool operator==(const Base_string<T> & s1, const Base_string<T> & s2)
-{
-    if (s1.compare(s2) == 0)
-        return true;
-    return false;
-}
-
-template <typename T>
-inline bool operator!=(const Base_string<T> & s1, const Base_string<T> & s2)
-{
-    return !operator==(s1, s2);
-}
-
-typedef Base_string<char> my_string;
-typedef Base_string<wchar_t> my_wstring;
+typedef my_basic_string<char> my_string;
+typedef my_basic_string<wchar_t> my_wstring;
 
 #endif

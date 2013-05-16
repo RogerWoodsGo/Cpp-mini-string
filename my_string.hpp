@@ -136,19 +136,23 @@ class my_basic_string
             return (this->buffer() + n)[0];
         }
 
-        void reserve (const size_t & n = 0)
+        void reserve (size_t n = 0)
         {
-            if (n < m_length) return;
             if (m_length >= TAB_SIZE(T))
             {
                 if (n < m_buff.m_pointer.m_capacity)
+                    return;
+            }
+            else
+            {
+                if (n < TAB_SIZE(T))
                     return;
             }
 
             T * temp = new T[n + 1];
             string_type::cpy(temp, this->c_str());
             this->free_memory();
-            m_buff.m_pointer.m_ptr = new T[n];
+            m_buff.m_pointer.m_ptr = new T[n + 1];
             string_type::cpy(m_buff.m_pointer.m_ptr, temp);
             m_buff.m_pointer.m_capacity = n;
 
@@ -166,7 +170,8 @@ class my_basic_string
 
             else if (n > m_length)
             {
-                std::memset(this->buffer() + m_length, c, n - m_length);
+                std::memset(&(*this)[m_length], c, n - m_length);
+                (*this)[n] = string_type::null_char();
             }
 
             m_length = n;
